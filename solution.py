@@ -8,14 +8,17 @@ square_units = [cross(rs, cs) for rs in ('ABC','DEF','GHI') for cs in ('123','45
 unitlist = row_units + column_units + square_units
 
 # TODO: Update the unit list to add the new diagonal units
-l_diag_units = []
-r_diag_units = []
-for i, r in enumerate(rows):
-    c = cols[i]
-    c1 = cols[len(cols)-1-i]
-    l_diag_units.append(r+c)
-    r_diag_units.append(r+c1)
+l_diag_units = [a + b for a,b in zip(rows, cols)]
+r_diag_units = [a + b for a,b in zip(rows, reversed(cols))]
 
+# l_diag_units = []
+# r_diag_units = []
+# for i, r in enumerate(rows):
+#     c = cols[i]
+#     c1 = cols[len(cols)-1-i]
+#     l_diag_units.append(r+c)
+#     r_diag_units.append(r+c1)
+#
 unitlist = unitlist + [l_diag_units] + [r_diag_units]
 
 # Must be called after all units (including diagonals) are added to the unitlist
@@ -50,21 +53,29 @@ def naked_twins(values):
     and because it is simpler (since the reduce_puzzle function already calls this
     strategy repeatedly).
     """
-    for unit in unitlist:
-        s = set()
-        for box in unit:
-            if values[box] not in s:
-                s.add(values[box])
-            elif len(values[box]) == 2:
-                remove_twins(unit, values[box], values)
+    for unit in unitlist:  # for each unit (row/column/square/diagonal)
+        # create a dictionary 'inv_twin_dict' that inverse maps value to box,
+        # i.e., key is the value of that box, and value is the box label
+        unit_values = [values[element] for element in unit]
+        unit_dict = dict(zip(unit, unit_values))
+        inverse_map = {}
+        for key, value in unit_dict.items():
+            inverse_map.setdefault(value, []).append(key)
+        inv_twin_dict = {key: value for key, value in inverse_map.items() if len(value) == 2 and len(key) == 2}
+
+        # create a list of unsolved boxes in that unit
+        unsolved_boxes = [key for key in unit_dict.keys() if len(unit_dict[key]) > 1]
+
+        # check the value of any unsolved box (exclude twin boxes)
+        # if a digit is in any twin box, delete that digit from the unsolved box value
+        for twin_value, twin_box in inv_twin_dict.items():
+            for unsolved_box in unsolved_boxes:
+                if unsolved_box not in twin_box:
+                    for digit in twin_value:
+                        # values[unsolved_box] = values[unsolved_box].replace(digit, '')
+                        new_value = values[unsolved_box].replace(digit, '')
+                        assign_value(values, unsolved_box, new_value)
     return values
-
-def remove_twins(unit, rem_val, values):
-    for box in unit:
-        if len(values[box]) > 2:
-            values[box] = values[box].replace(rem_val[0], '')
-            values[box] = values[box].replace(rem_val[1], '')
-
 
 def eliminate(values):
     """Apply the eliminate strategy to a Sudoku puzzle
